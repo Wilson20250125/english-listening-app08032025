@@ -1,38 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Menu, X, Calendar, User, Globe, LogOut, Loader } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [userProfile, setUserProfile] = useState<{ first_name: string; email: string } | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>('en');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let isMounted = true;
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('first_name, email')
-          .eq('user_id', user.id)
-          .single();
-        if (profile && isMounted) {
-          setUserProfile(profile);
-        }
-      }
-      if (isMounted) setLoadingUser(false);
-    };
-    checkUser();
-    return () => { isMounted = false; };
-  }, []);
+  const { user, profile, loading, signOut } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUserProfile(null);
+    await signOut();
     navigate('/login');
   };
 
@@ -40,7 +18,7 @@ const Navbar: React.FC = () => {
     setLanguage(prev => prev === 'en' ? 'zh' : 'en');
   };
 
-  if (loadingUser) {
+  if (loading) {
     return (
       <nav className="bg-white shadow-md sticky top-0 z-50 flex justify-center items-center h-16">
         <Loader className="h-6 w-6 animate-spin text-blue-600" />
@@ -48,6 +26,8 @@ const Navbar: React.FC = () => {
       </nav>
     );
   }
+
+  const isAuthenticated = !!user;
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -62,14 +42,19 @@ const Navbar: React.FC = () => {
             <Link to="/" className="text-gray-700 hover:text-blue-600 font-medium">
               {language === 'en' ? 'Home' : '首页'}
             </Link>
-            <Link to="/course-schedule" className="text-gray-700 hover:text-blue-600 font-medium flex items-center">
-              <Calendar className="h-5 w-5 mr-1" />
-              {language === 'en' ? 'Course Schedule' : '课程表'}
-            </Link>
-            <Link to="/profile" className="text-gray-700 hover:text-blue-600 font-medium flex items-center">
-              <User className="h-5 w-5 mr-1" />
-              {language === 'en' ? 'Profile' : '个人资料'}
-            </Link>
+            {isAuthenticated && (
+              <>
+
+                <Link to="/course-schedule" className="text-gray-700 hover:text-blue-600 font-medium flex items-center">
+                  <Calendar className="h-5 w-5 mr-1" />
+                  {language === 'en' ? 'Course Schedule' : '课程表'}
+                </Link>
+                <Link to="/profile" className="text-gray-700 hover:text-blue-600 font-medium flex items-center">
+                  <User className="h-5 w-5 mr-1" />
+                  {language === 'en' ? 'Profile' : '个人资料'}
+                </Link>
+              </>
+            )}
             <button
               onClick={toggleLanguage}
               className="text-gray-700 hover:text-blue-600 font-medium flex items-center"
@@ -78,20 +63,30 @@ const Navbar: React.FC = () => {
               {language.toUpperCase()}
             </button>
 
-            {/* ✅ 登录状态显示欢迎词，未登录也允许访问 */}
             <div className="flex items-center space-x-4">
-              <span className="text-gray-700">
-                {language === 'en' ? 'Welcome' : '欢迎'}
-                {userProfile ? `, ${userProfile.first_name}` : '!'}
-              </span>
-              {userProfile && (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center text-red-600 hover:text-red-700"
-                >
-                  <LogOut className="h-5 w-5 mr-1" />
-                  {language === 'en' ? 'Logout' : '退出'}
-                </button>
+              {isAuthenticated ? (
+                <>
+                  <span className="text-gray-700">
+                    {language === 'en' ? 'Welcome' : '欢迎'}
+                    {profile ? `, ${profile.first_name}` : '!'}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center text-red-600 hover:text-red-700"
+                  >
+                    <LogOut className="h-5 w-5 mr-1" />
+                    {language === 'en' ? 'Logout' : '退出'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="text-gray-700 hover:text-blue-600 font-medium">
+                    {language === 'en' ? 'Login' : '登录'}
+                  </Link>
+                  <Link to="/signup" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">
+                    {language === 'en' ? 'Sign Up' : '注册'}
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -115,35 +110,58 @@ const Navbar: React.FC = () => {
           >
             {language === 'en' ? 'Home' : '首页'}
           </Link>
-          <Link
-            to="/course-schedule"
-            className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-          >
-            {language === 'en' ? 'Course Schedule' : '课程表'}
-          </Link>
-          <Link
-            to="/profile"
-            className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-          >
-            {language === 'en' ? 'Profile' : '个人资料'}
-          </Link>
+          {isAuthenticated && (
+            <>
+
+              <Link
+                to="/course-schedule"
+                className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+              >
+                {language === 'en' ? 'Course Schedule' : '课程表'}
+              </Link>
+              <Link
+                to="/profile"
+                className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+              >
+                {language === 'en' ? 'Profile' : '个人资料'}
+              </Link>
+            </>
+          )}
           <button
             onClick={toggleLanguage}
             className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
           >
             {language === 'en' ? 'Language: ' : '语言：'}{language.toUpperCase()}
           </button>
-          {/* ✅ 移除跳转限制 */}
-          <div className="block px-3 py-2 text-gray-700">
-            {language === 'en' ? 'Welcome!' : '欢迎！'}
-          </div>
-          {userProfile && (
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-3 py-2 text-red-600 hover:text-red-700 hover:bg-gray-50 rounded-md"
-            >
-              {language === 'en' ? 'Logout' : '退出'}
-            </button>
+          
+          {isAuthenticated ? (
+            <>
+              <div className="block px-3 py-2 text-gray-700">
+                {language === 'en' ? 'Welcome' : '欢迎'}
+                {profile ? `, ${profile.first_name}` : '!'}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-3 py-2 text-red-600 hover:text-red-700 hover:bg-gray-50 rounded-md"
+              >
+                {language === 'en' ? 'Logout' : '退出'}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+              >
+                {language === 'en' ? 'Login' : '登录'}
+              </Link>
+              <Link
+                to="/signup"
+                className="block px-3 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md"
+              >
+                {language === 'en' ? 'Sign Up' : '注册'}
+              </Link>
+            </>
           )}
         </div>
       )}

@@ -37,3 +37,35 @@ export interface UserPerformance {
   completed_at: string;
   duration: number;
 }
+
+export interface LessonItem {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  course_id: string;
+}
+
+export interface LessonQuestion {
+  id: string;
+  lesson_id: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
+// 新增的对话和评估相关接口
+export interface DialogueMessage {
+  role: 'assistant' | 'user';
+  content: string;
+  timestamp: Date;
+}
+
+export interface Evaluation {
+  accuracy: number;
+  mainIdea: number;
+  detailTracking: number;
+  vocabulary: number;
+  emotionalUnderstanding: number;
+  overallFeedback: string;
+}
